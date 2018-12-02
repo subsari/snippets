@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+# Reference: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html 
+
+Description: Template to create an EC2 instance.
+
+Parameters:
+  Instance1Name:
+    Description: Name of EC2 instance
+    Type: String
+    Default: instance-1
+
+  UserName:
+    Type: String
+    Default: joel
+    Description: Username of user that will be added to EC2 (e.g joel, john etc)
+
+  SSHPublicKey:
+    Type: String
+    Default: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLeSouFPj782uWyRqYu50B34ihqbOXXT8jEXam1Rb2hmvou0JVknFt8gHuB8bUGEu4B57b+r/qsZOV4JRpJVzQyoYHZHZ1NHkFtrPWj81YwRfM/y9lDh22DMvZO8TGxkILSLuAzbYDoA9aYiut75rwJHBL8GLDkF4lwB+UEdiJ3lHqrOfKooZwKtiGDA1AfhLCY+D+9vuMbQf184beAI0SyP4mqgELPrZQ/DrHWpTwHV6k3HlJRV2EybeOjBMItDrDtj2cUTnZNBchu1NcDToONGihG5bh4ItVCO9mWBbHRCykmygMgBYmiZCtr8ymBYZh4qQA6syjlBfkTbje2mZn joel
+    Description: Execute this at the command line echo $(ssh-keygen -y -f ~/.ssh/id_rsa)
+
+  SecurityGroup:
+    Description: Name of security group
+    Type: 'List<AWS::EC2::SecurityGroup::Id>'
+
+  Subnet1:
+    Description: Subnet to host EC2
+    Type: 'AWS::EC2::Subnet::Id'
+
+  VpcId:
+    Description: VPC of the launcher and its security group
+    Type: 'AWS::EC2::VPC::Id'
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+    ConstraintDescription: Valid EC2 instance type.
+
+  AMI:
+    Description: AMI to be used to create EC2 instance
+    Type: String
+    Default: ami-0922553b7b0369273
+
+Resources:
+
+  EC2Instance1:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref AMI
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref Subnet1
+      SecurityGroupIds: !Ref SecurityGroup    
+      Tags:
+        - 
+          Key: Name
+          Value: !Ref Instance1Name
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+            - |
+              #!/bin/bash -xe
+              adduser ${USERNAME}
+              echo ${USERNAME} 'ALL=(ALL) NOPASSWD:ALL'>>/etc/sudoers.d/${USERNAME}
+              mkdir /home/${USERNAME}/.ssh
+              echo ${SSHKEY} > /home/${USERNAME}/.ssh/authorized_keys
+              chown -R ${USERNAME}.${USERNAME} /home/${USERNAME}/.ssh
+              chmod 700 /home/${USERNAME}/.ssh
+              chmod 600 /home/${USERNAME}/.ssh/authorized_keys
+            - USERNAME: !Ref UserName
+              SSHKEY: !Ref SSHPublicKey
+              
+Outputs:
+  InstanceId1:
+    Description: InstanceId of the first instance
+    Value: !Ref EC2Instance1
