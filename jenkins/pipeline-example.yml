@@ -1,0 +1,80 @@
+pipeline{
+    agent any
+    
+    environment {
+        TMP_DOCKER_CONTAINER="jenkins-${currentBuild.number}"
+        ENVIRONMENT="dev"
+        PIPELINE_NAME="MyProjectPipeline-Dev"
+    }
+
+    stages{
+        stage('Clone Repository'){
+            steps {
+                sh """ #!/bin/bash
+                    echo 'Cloning repository'
+                    mkdir ${TMP_DOCKER_CONTAINER}
+                    cd ${TMP_DOCKER_CONTAINER}
+
+                    # Clone & Navigate Snippets Repo
+                    git clone https://github.com/subsari/snippets.git
+                    cd /var/lib/jenkins/workspace/${PIPELINE_NAME}/docker/apache
+                    
+                    # Copy Docker Files To Workspace
+                    cp * -r /var/lib/jenkins/workspace/${PIPELINE_NAME}/
+                """
+            }
+        }
+
+        stage('Build Docker Image'){
+            steps {
+                sh """ #!/bin/bash
+                    sudo docker build -t snippets .
+                """
+            }
+        }
+
+        stage('Run Docker Instance'){
+            steps {
+                sh """ #!/bin/bash
+                    sudo docker run --name ${ENVIRONMENT}-${currentBuild.number} -d -p 2019:80 snippets
+                """
+            }
+        }
+
+        stage('Run Tests On Docker Instance'){
+            steps {
+                echo 'Running tests on docker container instance ${TMP_DOCKER_CONTAINER}'
+                sh """ #!/bin/bash
+                    sudo curl http://localhost:2019 -I -L
+                """
+            }
+        }
+
+        stage('Cleanup Environment'){
+            steps {
+                sh """ #!/bin/bash
+                    ## Uncomment lines below if you wish
+                    ## to navigate to browser URL and view 
+                    ## the test website built for CI/CD example
+                    sudo docker container stop ${ENVIRONMENT}-${currentBuild.number}
+                    sudo docker container rm ${ENVIRONMENT}-${currentBuild.number}
+                """
+            }
+        }
+
+        stage('Promote To Staging'){
+            steps {
+                echo 'Here you would trigger your staging or other qa environments.'
+                echo 'For example: by calling the build JenkinsProjectName (between single quotes)'
+            }
+            post {
+                success {
+                    echo 'Successfully promoted promoted to next environment.'
+                }
+                failure {
+                    echo 'Failed to promote environment.'
+                }
+            }
+        }
+    }
+}
