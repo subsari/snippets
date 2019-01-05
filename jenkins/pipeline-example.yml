@@ -12,7 +12,8 @@ pipeline{
             steps {
                 sh """ #!/bin/bash
                     echo 'Cloning repository'
-                    mkdir ${TMP_DOCKER_CONTAINER}
+                    rm -rf ${TMP_DOCKER_CONTAINER}
+                    mkdir -p ${TMP_DOCKER_CONTAINER}
                     cd ${TMP_DOCKER_CONTAINER}
 
                     # Clone & Navigate Snippets Repo
