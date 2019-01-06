@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: EC2 CentOS 7 Docker Template.
+
+Parameters:
+  InstanceName:
+    Description: Name of EC2 instance
+    Type: String
+    Default: instance-1
+
+  SSHPublicKey:
+    Type: String
+    Description: Public SSH key created for the 'docker' user that will manage this dynamic instance.
+
+  SecurityGroup:
+    Description: Name of security group
+    Type: 'List<AWS::EC2::SecurityGroup::Id>'
+
+  Subnet:
+    Description: Subnet to host EC2
+    Type: 'AWS::EC2::Subnet::Id'
+
+  VpcId:
+    Description: VPC of the launcher and its security group
+    Type: 'AWS::EC2::VPC::Id'
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    ConstraintDescription: Valid EC2 instance type.
+
+  AMI:
+    Description: AMI to be used to create EC2 instance
+    Type: String
+    Default: ami-0922553b7b0369273
+
+Resources:
+
+  EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref AMI
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref Subnet
+      SecurityGroupIds: !Ref SecurityGroup    
+      Tags:
+        - 
+          Key: Name
+          Value: !Ref InstanceName
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+            - |
+              #!/bin/bash -xe
+
+              # add user and register ssh key
+              adduser docker
+              echo docker 'ALL=(ALL) NOPASSWD:ALL'>>/etc/sudoers.d/docker
+              mkdir /home/docker/.ssh
+              echo ${SSHKEY} > /home/docker/.ssh/authorized_keys
+
+              # configure user and ssh permissions
+              chown -R docker.docker /home/docker/.ssh
+              chmod 700 /home/docker/.ssh
+              chmod 600 /home/docker/.ssh/authorized_keys
+
+            - SSHKEY: !Ref SSHPublicKey
+              
+Outputs:
+  InstanceId:
+    Description: InstanceId of the first instance
+    Value: !Ref EC2Instance
