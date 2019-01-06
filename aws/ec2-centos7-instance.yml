@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: EC2 CentOS 7 Template.
+
+Parameters:
+  InstanceName:
+    Description: Name of EC2 instance
+    Type: String
+    Default: instance-1
+
+  UserName:
+    Type: String
+    Default: admin
+    Description: Username of user that will be added to EC2 (e.g joel, john etc)
+
+  SSHPublicKey:
+    Type: String
+    Description: Public SSH key that belongs to user who will manage this EC2 instance.
+
+  SecurityGroup:
+    Description: Name of security group
+    Type: 'List<AWS::EC2::SecurityGroup::Id>'
+
+  Subnet:
+    Description: Subnet to host EC2
+    Type: 'AWS::EC2::Subnet::Id'
+
+  VpcId:
+    Description: VPC of the launcher and its security group
+    Type: 'AWS::EC2::VPC::Id'
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    ConstraintDescription: Valid EC2 instance type.
+
+  AMI:
+    Description: AMI to be used to create EC2 instance
+    Type: String
+    Default: ami-0922553b7b0369273
+
+Resources:
+
+  EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref AMI
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref Subnet
+      SecurityGroupIds: !Ref SecurityGroup    
+      Tags:
+        - 
+          Key: Name
+          Value: !Ref InstanceName
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+            - |
+              #!/bin/bash -xe
+
+              # add user and register ssh key
+              adduser ${USERNAME}
+              echo ${USERNAME} 'ALL=(ALL) NOPASSWD:ALL'>>/etc/sudoers.d/${USERNAME}
+              mkdir /home/${USERNAME}/.ssh
+              echo ${SSHKEY} > /home/${USERNAME}/.ssh/authorized_keys
+
+              # configure user and ssh permissions
+              chown -R ${USERNAME}.${USERNAME} /home/${USERNAME}/.ssh
+              chmod 700 /home/${USERNAME}/.ssh
+              chmod 600 /home/${USERNAME}/.ssh/authorized_keys
+
+            - USERNAME: !Ref UserName
+              SSHKEY: !Ref SSHPublicKey
+              
+Outputs:
+  InstanceId:
+    Description: InstanceId of the first instance
+    Value: !Ref EC2Instance
